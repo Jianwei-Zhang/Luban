@@ -36,11 +36,11 @@ while(<GFFFILE>)
 }
 close (GFFFILE);
 open (OUTPUT,">$outfile") or die "can't open OUT-FILE: $!";
-for $seqid (sort {$a cmp $a} keys %leng)
+for $seqid (sort {$a cmp $b} keys %leng)
 {
-	for $type (sort {$a cmp $a} keys %{$leng{$seqid}})
+	for $type (sort {$a cmp $b} keys %{$leng{$seqid}})
 	{
-		for $bin (sort {$a <=> $a} keys %{$leng{$seqid}{$type}})
+		for $bin (sort {$a <=> $b} keys %{$leng{$seqid}{$type}})
 		{
 			$binstart=$bin*$binsize+1;
 			$binend=($bin+1)*$binsize;

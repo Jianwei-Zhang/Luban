@@ -1,4 +1,3 @@
-#!/usr/local/bin/perl -w
 use GD;
 use Getopt::Long;
 use Pod::Usage;
@@ -15,7 +14,7 @@ my $imagewidth = 5000;
 my $headheight=100;
 my $barheight=25;
 my $chartheight=300;
-my $spaceheight=10;
+my $spaceheight=30;
 my $bottomheight=100;
 
 ## Parse options and print usage if there is a syntax error,
@@ -59,10 +58,11 @@ my %bin=();
 my $nolane="NOLANE";
 my %referenceorder=();
 my $referenceorder=0;
-my $maxcount=0;
-my $mincount=0;
-my @numberlist=(0 .. 99); #for non numberic data line
+my $maxcount=-99999999;
+my $mincount=99999999;
+my @numberlist=(1 .. 99); #for non numberic data line
 my %assignnumber=();
+my $max=1;
 open INPUT,"<$input" or die "$!";
 while (<INPUT>) {
 	chop;
@@ -92,9 +92,9 @@ while (<INPUT>) {
 		$confidencemark{$`}{$'}{$line[1]}{$line[2]}{$line[4]}=$confidencemark if $confidencemark;
 	}
 	else
-	{
+	{   $line[0]= $line[4].":".$line[0];
 		$line[2]=$lengthdetail{$line[4]}{$line[0]} if ($line[2] > $lengthdetail{$line[4]}{$line[0]});
-		$bin{$nolane}{$line[0]}{$line[1]}{$line[2]}{$line[4]}=$line[3];
+		$bin{$line[4]}{$line[0]}{$line[1]}{$line[2]}{$line[4]}=$line[3];
 		$confidencemark{$nolane}{$line[0]}{$line[1]}{$line[2]}{$line[4]}=$confidencemark if $confidencemark;
 	}
 	$maxcount = $line[3] if($maxcount < $line[3]);
@@ -105,6 +105,11 @@ while (<INPUT>) {
 		$referenceorder++;
 	}
 }
+$max=abs($maxcount) if(abs($maxcount)>abs($mincount));
+$max=abs($mincount) if(abs($maxcount)<abs($mincount));
+$max=abs($mincount) if(abs($maxcount)==abs($mincount));
+
+
 close INPUT;
 
 
@@ -126,7 +131,7 @@ foreach $lane (keys %bin)
 	}
 }
 
-my $imageheight=(($barheight+$chartheight)*$referenceorder+$spaceheight)*$totalbars + $headheight + $bottomheight;
+my $imageheight=($barheight+$chartheight+$spaceheight)*$totalbars + $headheight + $bottomheight;
 
 my $im = new GD::Image($imagewidth,$imageheight); 
 my $white = $im->colorAllocate(255,255,255); 
@@ -144,20 +149,18 @@ $im->interlaced('true');
 	#draw color samples
 	if($barheight > 0)
 	{
-		if($mincount < 0)
-		{
+		
+		
 			$startpoint=9 * length($mincount);
 			$im->string(gdGiantFont,1,1,$mincount,$black);
-		}
-		else
-		{
-			$startpoint=0;
-		}
+		
+		
 		for ($i=0;$i<256;$i++)
 		{
 			$color[$i] = $im->colorAllocate($i,255-$i,255-$i); #if use truecolor, $im->colorAllocateAlpha($i,255-$i,255-$i,0); The alpha value may range from 0 (opaque) to 127 (transparent).;
 			$im->line($startpoint+$i,0,$startpoint+$i,$barheight,$color[$i]);
 		}
+		$im->string(gdGiantFont,$startpoint+$i+1,1,$maxcount,$black);
 		if(keys %assignnumber)
 		{
 			#if the bin value is not a number, then the script will assign one
@@ -166,16 +169,14 @@ $im->interlaced('true');
 			foreach (sort keys %assignnumber)
 			{
 				$colorindex=int ($assignnumber{$_}*255/$maxcount);
-				$im->filledRectangle($startpoint+255+$j*$barheight+$stringlength+5,0,$startpoint+255+($j+1)*$barheight+$stringlength,$barheight,$color[$colorindex]);
-				$im->string(gdGiantFont,$startpoint+255+($j+1)*$barheight+$stringlength+1,1,$_,$black);
+				$im->filledRectangle($startpoint+255+$j*$barheight+$stringlength+5+9 * length($mincount),0,$startpoint+255+($j+1)*$barheight+$stringlength+9 * length($mincount),$barheight,$color[$colorindex]);
+				$im->string(gdGiantFont,$startpoint+255+($j+1)*$barheight+$stringlength+1+9 * length($mincount),1,$_,$black);
 				$stringlength += 9 * length($_);
 				$j++;
 			}
 		}
-		else
-		{
-			$im->string(gdGiantFont,$startpoint+$i+1,1,$maxcount,$black);
-		}
+		#else
+		###}
 	}
 	
 	
@@ -193,7 +194,15 @@ $im->interlaced('true');
 ## /--head region end--/
 
 ## /--data region start--/
-my $barnumber=0;
+my $seqnumber= 0;
+my $charttop;
+my $chartbottom;
+my $chartcentral;
+my %chartdrawn;
+my %bardrawn;
+my $barbottom;
+$charttop=$headheight;
+
 foreach $lane (sort keys %bin)
 {
 	foreach $chr (sort keys %{$bin{$lane}})
@@ -207,13 +216,15 @@ foreach $lane (sort keys %bin)
 					$colorindex=int (($bin{$lane}{$chr}{$binstart}{$binend}{$referencename}-$mincount)*255/($maxcount-$mincount));
 					if($chartheight > 0)
 					{
-						if($referenceorder{$referencename}%2 == 0)
-						{
-							$charttop=$barnumber*(($barheight+$chartheight)*$referenceorder+$spaceheight)+$headheight+$referenceorder{$referencename}*($barheight+$chartheight)+1;
-							$chartcentral=$charttop+$chartheight/2;
-							$chartbottom=$charttop+$chartheight-1;
-							if (!exists $chartdrawn{$lane}{$referencename}{$chr})
-							{
+						
+						
+							
+							if (!exists $chartdrawn{$referencename}{$chr})
+							{   
+							    $charttop=$seqnumber*($chartheight+$barheight+$spaceheight)+$headheight;
+							    $chartcentral=$charttop+$chartheight/2;
+							    $chartbottom=$charttop+$chartheight;
+								
 								#vertical line
 								$im->line(0,$charttop,0,$chartbottom,$black);
 								#top mark
@@ -225,14 +236,14 @@ foreach $lane (sort keys %bin)
 								$im->line(0,$chartcentral,5,$chartcentral,$black);
 								#bottom mark
 								$im->line(0,$chartbottom,5,$chartbottom,$black);
-								$chartdrawn{$lane}{$referencename}{$chr}=1;
+								$chartdrawn{$referencename}{$chr}=1;
 							}
 							#draw data
-							if($mincount < 0)
+							if($mincount < 0 && $maxcount>0)
 							{
 								if($chartheight*$bin{$lane}{$chr}{$binstart}{$binend}{$referencename} >= 0)
 								{
-									$im->filledRectangle($binstart*$imagewidth/50000000,$chartcentral-$chartheight*$bin{$lane}{$chr}{$binstart}{$binend}{$referencename}/($maxcount-$mincount),$binend*$imagewidth/50000000,$chartcentral,$black);
+									$im->filledRectangle($binstart*$imagewidth/50000000,$chartcentral-$chartheight*$bin{$lane}{$chr}{$binstart}{$binend}{$referencename}/($max*2),$binend*$imagewidth/50000000,$chartcentral,$black);
 									#draw confidence mark:
 									if($showconfidence && exists $confidencemark{$lane}{$chr}{$binstart}{$binend}{$referencename})
 									{
@@ -246,7 +257,7 @@ foreach $lane (sort keys %bin)
 								}
 								else
 								{
-									$im->filledRectangle($binstart*$imagewidth/50000000,$chartcentral,$binend*$imagewidth/50000000,$chartcentral-$chartheight*$bin{$lane}{$chr}{$binstart}{$binend}{$referencename}/($maxcount-$mincount),$black);
+									$im->filledRectangle($binstart*$imagewidth/50000000,$chartcentral,$binend*$imagewidth/50000000,$chartcentral-$chartheight*$bin{$lane}{$chr}{$binstart}{$binend}{$referencename}/($max*2),$black);
 									#draw confidence mark:
 									if($showconfidence && exists $confidencemark{$lane}{$chr}{$binstart}{$binend}{$referencename})
 									{
@@ -259,7 +270,7 @@ foreach $lane (sort keys %bin)
 									}
 								}
 							}
-							else
+							if($mincount > 0)
 							{
 								$im->filledRectangle($binstart*$imagewidth/50000000,$chartbottom-$chartheight*$bin{$lane}{$chr}{$binstart}{$binend}{$referencename}/$maxcount,$binend*$imagewidth/50000000,$chartbottom,$black);
 								#draw confidence mark:
@@ -273,84 +284,32 @@ foreach $lane (sort keys %bin)
 									}
 								}
 							}
-						}
-						else
-						{
-							$charttop=$barnumber*(($barheight+$chartheight)*$referenceorder+$spaceheight)+$headheight+$referenceorder{$referencename}*($barheight+$chartheight)+$barheight+1;
-							$chartcentral=$charttop+$chartheight/2;
-							$chartbottom=$charttop+$chartheight-1;
-							if (!exists $chartdrawn{$lane}{$referencename}{$chr})
+							if($maxcount < 0)
 							{
-								#vertical line
-								$im->line(0,$charttop,0,$chartbottom,$black);
-								#top mark
-								$im->line(0,$charttop,5,$charttop,$black);
-								#central line
-								$im->line(0,$chartcentral,$lengthdetail{$referencename}{$chr}*$imagewidth/50000000,$chartcentral,$background);
-								#central mark
-								$im->line(0,$chartcentral,5,$chartcentral,$black);
-								#bottom mark
-								$im->line(0,$chartbottom,5,$chartbottom,$black);
-								#$im->string(gdGiantFont,5,$charttop,$maxcount,$black);
-								$chartdrawn{$lane}{$referencename}{$chr}=1;
-							}
-							#draw data
-							if($mincount < 0)
-							{
-								if($bin{$lane}{$chr}{$binstart}{$binend}{$referencename} >= 0)
-								{
-									$im->filledRectangle($binstart*$imagewidth/50000000,$chartcentral,$binend*$imagewidth/50000000,$chartcentral+$chartheight*$bin{$lane}{$chr}{$binstart}{$binend}{$referencename}/($maxcount-$mincount),$black);
-									#draw confidence mark:
-									if($showconfidence && exists $confidencemark{$lane}{$chr}{$binstart}{$binend}{$referencename})
-									{
-										$confidencemarknumber=0;
-										foreach (split //,$confidencemark{$lane}{$chr}{$binstart}{$binend}{$referencename})
-										{
-											$im->string(gdTinyFont,$binstart*$imagewidth/50000000,$chartcentral+$confidencemarknumber*8+$chartheight*$bin{$lane}{$chr}{$binstart}{$binend}{$referencename}/($maxcount-$mincount),$_,$red);
-											$confidencemarknumber++;
-										}
-									}
-								}
-								else
-								{
-									$im->filledRectangle($binstart*$imagewidth/50000000,$chartcentral+$chartheight*$bin{$lane}{$chr}{$binstart}{$binend}{$referencename}/($maxcount-$mincount),$binend*$imagewidth/50000000,$chartcentral,$black);
-									#draw confidence mark:
-									if($showconfidence && exists $confidencemark{$lane}{$chr}{$binstart}{$binend}{$referencename})
-									{
-										$confidencemarknumber=0;
-										foreach (split //,$confidencemark{$lane}{$chr}{$binstart}{$binend}{$referencename})
-										{
-											$im->string(gdTinyFont,$binstart*$imagewidth/50000000,$chartcentral-($confidencemarknumber+1)*8+$chartheight*$bin{$lane}{$chr}{$binstart}{$binend}{$referencename}/($maxcount-$mincount),$_,$red);
-											$confidencemarknumber++;
-										}
-									}
-								}
-							}
-							else
-							{
-								$im->filledRectangle($binstart*$imagewidth/50000000,$charttop,$binend*$imagewidth/50000000,$charttop+$chartheight*$bin{$lane}{$chr}{$binstart}{$binend}{$referencename}/$maxcount,$black);
+							$im->filledRectangle($binstart*$imagewidth/50000000,$chartbottom-$chartheight*$bin{$lane}{$chr}{$binstart}{$binend}{$referencename}/$mincount,$binend*$imagewidth/50000000,$chartbottom,$black);
 								#draw confidence mark:
 								if($showconfidence && exists $confidencemark{$lane}{$chr}{$binstart}{$binend}{$referencename})
 								{
 									$confidencemarknumber=0;
 									foreach (split //,$confidencemark{$lane}{$chr}{$binstart}{$binend}{$referencename})
 									{
-										$im->string(gdTinyFont,$binstart*$imagewidth/50000000,$charttop+$confidencemarknumber*8+$chartheight*$bin{$lane}{$chr}{$binstart}{$binend}{$referencename}/$maxcount,$_,$red);
+										$im->string(gdTinyFont,$binstart*$imagewidth/50000000,$chartbottom-($confidencemarknumber+1)*8-$chartheight*$bin{$lane}{$chr}{$binstart}{$binend}{$referencename}/$maxcount,$_,$red);
 										$confidencemarknumber++;
 									}
 								}
 							}
 						}
-					}
+					
+					
 					if($barheight > 0)
 					{
-						if($referenceorder{$referencename}%2 == 0)
-						{
+						
+						
 							#draw background
-							$bartop=$barnumber*(($barheight+$chartheight)*$referenceorder+$spaceheight)+$headheight+$referenceorder{$referencename}*($barheight+$chartheight)+$chartheight+1;
+							$bartop = $charttop+$chartheight;
 							$barbottom=$bartop+$barheight-1;
-							if (!exists $bardrawn{$lane}{$referencename}{$chr})
-							{
+							if (!exists $bardrawn{$referencename}{$chr})
+							{  
 								$im->filledRectangle(0,$bartop,$lengthdetail{$referencename}{$chr}*$imagewidth/50000000,$barbottom,$background);
 								if($lane eq $nolane)
 								{
@@ -358,9 +317,9 @@ foreach $lane (sort keys %bin)
 								}
 								else
 								{
-									$im->string(gdGiantFont,$lengthdetail{$referencename}{$chr}*$imagewidth/50000000+5,$bartop,$lane.":".$referencename.":".$chr,$black);
+									$im->string(gdGiantFont,$lengthdetail{$referencename}{$chr}*$imagewidth/50000000+5,$bartop,$lane.":".$chr,$black);
 								}
-								$bardrawn{$lane}{$referencename}{$chr}=1;
+								$bardrawn{$referencename}{$chr}=1;
 							}
 							#draw data
 							$im->filledRectangle($binstart*$imagewidth/50000000,$bartop,$binend*$imagewidth/50000000,$barbottom,$color[$colorindex]);
@@ -368,37 +327,14 @@ foreach $lane (sort keys %bin)
 							{
 								$im->string(gdTinyFont,$binstart*$imagewidth/50000000,$bartop+1,$bin{$lane}{$chr}{$binstart}{$binend}{$referencename},$black);
 							}
-						}
-						else
-						{
-							#draw background
-							$bartop=$barnumber*(($barheight+$chartheight)*$referenceorder+$spaceheight)+$headheight+$referenceorder{$referencename}*($barheight+$chartheight)+1;
-							$barbottom=$bartop+$barheight-1;
-							if (!exists $bardrawn{$lane}{$referencename}{$chr})
-							{
-								$im->filledRectangle(0,$bartop,$lengthdetail{$referencename}{$chr}*$imagewidth/50000000,$barbottom,$background);
-								if($lane eq $nolane)
-								{
-									$im->string(gdGiantFont,$lengthdetail{$referencename}{$chr}*$imagewidth/50000000+5,$bartop,$referencename.":".$chr,$black);
-								}
-								else
-								{
-									$im->string(gdGiantFont,$lengthdetail{$referencename}{$chr}*$imagewidth/50000000+5,$bartop,$lane.":".$referencename.":".$chr,$black);
-								}
-								$bardrawn{$lane}{$referencename}{$chr}=1;
-							}
-							#draw data
-							$im->filledRectangle($binstart*$imagewidth/50000000,$bartop,$binend*$imagewidth/50000000,$barbottom,$color[$colorindex]);
-							if($showvalue)
-							{
-								$im->string(gdTinyFont,$binstart*$imagewidth/50000000,$bartop+1,$bin{$lane}{$chr}{$binstart}{$binend}{$referencename},$black);
-							}
-						}
+						
+						
 					}
 				}
 			}
 		}
-		$barnumber++;
+		$seqnumber++;
+		
 	}
 }
 ## /--data region end--/
@@ -409,15 +345,10 @@ close OUTPUT;
 exit; 
 
 __END__
-
 =head1 NAME
-
 bin2png.pl - Drawing bin charts
-
 =head1 SYNOPSIS
-
 bin2png.pl [options]
-
  Options:
    -help            brief help message
    -man             full documentation
@@ -427,83 +358,46 @@ bin2png.pl [options]
    -imagewidth      image width
    -value           show value of each bin
    -confidence      show confidence mark
-
 =head1 OPTIONS
-
 =over 8
-
 =item B<-help>
-
 Print a brief help message and exits.
-
 =item B<-man>
-
 Prints the manual page and exits.
-
 =item B<-input>
-
 Input data from a file in Tab delimited text format. For example,
-
  #chr	bin_start	bin_end	bin_data	ref_name
  chr01	1	200000	4	IRGSP
  chr01	200001	400000	5	IRGSP
  ...
-
 The bin data can be generated by binMaker.pl, etc.
-
 =item B<-reflength>
-
 sequence legnth file name. For example: (generated by seqLength.pl)
-
  #seqid	length
  IRGSP:chr01	43268879
  IRGSP:chr02	35930381
  ...
-
 =item B<-output>
-
 Output data to a file.
-
 =item B<-imagewidth> (optional)
-
 Set image width (int > 0), default is 5000 pixel.
-
 =item B<-value> (optional)
-
 Display value of each bin, default is true.
-
 B<-novalue> will not display values.
-
 =item B<-confidence> (optional)
-
 Display confidence mark (asterisk) of each bin if exists, default is true.
-
 B<-noconfidence> will not display confidence mark.
-
 =back
-
 =head1 DESCRIPTION
-
 B<bin2png> will create PNG map from bin data.
-
 =head1 AUTHOR 
-
 Jianwei Zhang @ Arizona Genomics Institute
-
 =head1 EMAIL
-
 jzhang@cals.arizona.edu
-
 =head1 BUGS
-
 none.
-
 =head1 SEE ALSO 
-
 seqLength.pl binMaker.pl piBinMaker.pl tdBinMaker.pl thetaBinMaker.pl
-
 =head1 COPYRIGHT 
-
 This program is free software. You may copy or redistribute it under the same terms as Perl itself.
-
 =cut

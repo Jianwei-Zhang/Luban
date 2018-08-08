@@ -78,6 +78,11 @@ foreach (@seqList)
 		$sumLength{'oneM'} += $seq->length() if ($seq->length() > 1000000);
 	}
 }
+$sumLength{'halfK'} = &commify($sumLength{'halfK'});
+$sumLength{'oneK'} = &commify($sumLength{'oneK'});
+$sumLength{'tenK'} = &commify($sumLength{'tenK'});
+$sumLength{'hundredK'} = &commify($sumLength{'hundredK'});
+$sumLength{'oneM'} = &commify($sumLength{'oneM'});
 
 my $numberOfSequences = $#lengthList+1;
 my $meanSequenceLength = int $total/($#lengthList+1);
@@ -120,6 +125,12 @@ foreach (@lengthList)
 	}
 }
 close (OUTPUT);
+
+sub commify {
+	local $_  = shift;
+	1 while s/^(-?\d+)(\d{3})/$1,$2/;
+	return $_;
+}
 
 __END__
 

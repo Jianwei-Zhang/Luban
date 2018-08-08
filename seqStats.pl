@@ -42,7 +42,7 @@ if ($list)
 }
 
 my $total=0;
-my @lengthlist=();
+my @lengthList=();
 my $longest = 0;
 my $shortest = 9999999999;
 my %countByLength = ('halfK'  => '0',
@@ -63,7 +63,7 @@ foreach (@seqList)
 	while ( my $seq = $in->next_seq() )
 	{
 		$total += $seq->length();
-		push @lengthlist, $seq->length();
+		push @lengthList, $seq->length();
 		$longest = $seq->length() if ($longest < $seq->length());
 		$shortest = $seq->length() if ($shortest > $seq->length());
 		$countByLength{'halfK'}++ if ($seq->length() > 500);
@@ -79,9 +79,11 @@ foreach (@seqList)
 	}
 }
 
+my $numberOfSequences = $#lengthList+1;
+my $meanSequenceLength = int $total/($#lengthList+1);
 open (OUTPUT,">$output") or die "can't open OUT-FILE: $!";
 print OUTPUT "--in $input$list--\n";
-print OUTPUT "Number of sequences: ",$#lengthlist+1,".\n";
+print OUTPUT "Number of sequences: $numberOfSequences.\n";
 print OUTPUT "Total size of sequences: $total.\n";
 print OUTPUT "Longest sequence: $longest.\n";
 print OUTPUT "Shortest sequence: $shortest.\n";
@@ -90,30 +92,30 @@ print OUTPUT "Number of sequences > 1k nt: $countByLength{'oneK'} ($sumLength{'o
 print OUTPUT "Number of sequences > 10k nt: $countByLength{'tenK'} ($sumLength{'tenK'} bp).\n";
 print OUTPUT "Number of sequences > 100k nt: $countByLength{'hundredK'} ($sumLength{'hundredK'} bp).\n";
 print OUTPUT "Number of sequences > 1M nt: $countByLength{'oneM'} ($sumLength{'oneM'} bp).\n";
-print OUTPUT "Mean sequence length: ",int $total/($#lengthlist+1),".\n";
-@lengthlist = sort {$b <=> $a} @lengthlist;
-if($#lengthlist % 2 == 1)
+print OUTPUT "Mean sequence length: $meanSequenceLength.\n";
+@lengthList = sort {$b <=> $a} @lengthList;
+if($#lengthList % 2 == 1)
 {
-	my $median = int ($#lengthlist/2);
-	my $medianLength = ($lengthlist[$median]+$lengthlist[$median+1])/2;
-	print OUTPUT "Median sequence length: ",$medianLength,".\n";
+	my $median = int ($#lengthList/2);
+	my $medianLength = ($lengthList[$median]+$lengthList[$median+1])/2;
+	print OUTPUT "Median sequence length: $medianLength.\n";
 }
 else
 {
-	my $median = $#lengthlist/2;
-	print OUTPUT "Median sequence length: ",$lengthlist[$median],".\n";
+	my $median = $#lengthList/2;
+	print OUTPUT "Median sequence length: $lengthList[$median].\n";
 }
 
 my $subtotal=0;
 my $lFifty=0;
-foreach (@lengthlist)
+foreach (@lengthList)
 {
 	$subtotal += $_;
 	$lFifty++;
 	if($subtotal >= $total/2)
 	{
-		print OUTPUT "N50 sequence length: ", $_, ".\n";
-		print OUTPUT "L50 sequence count: ", $lFifty, ".\n";
+		print OUTPUT "N50 sequence length: $_.\n";
+		print OUTPUT "L50 sequence count: $lFifty.\n";
 		last;
 	}
 }

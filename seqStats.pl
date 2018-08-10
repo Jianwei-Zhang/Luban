@@ -40,91 +40,102 @@ if ($list)
 	}
 	close (LIST);
 }
-
-my $total=0;
-my @lengthList=();
-my $longest = 0;
-my $shortest = 9999999999;
-my %countByLength = ('halfK'  => '0',
-	'oneK'    => '0',
-    'tenK'   => '0',
-	'hundredK'  => '0',
-	'oneM' => '0');
-my %sumLength = ('halfK'  => '0',
-	'oneK'    => '0',
-    'tenK'   => '0',
-	'hundredK'  => '0',
-	'oneM' => '0');
-
+my @allLengthList=();
 foreach (@seqList)
 {
 	my $in = Bio::SeqIO->new(-file => $_,
 							-format => $format);
 	while ( my $seq = $in->next_seq() )
 	{
-		$total += $seq->length();
-		push @lengthList, $seq->length();
-		$longest = $seq->length() if ($longest < $seq->length());
-		$shortest = $seq->length() if ($shortest > $seq->length());
-		$countByLength{'halfK'}++ if ($seq->length() > 500);
-		$countByLength{'oneK'}++ if ($seq->length() > 1000);
-		$countByLength{'tenK'}++ if ($seq->length() > 10000);
-		$countByLength{'hundredK'}++ if ($seq->length() > 100000);
-		$countByLength{'oneM'}++ if ($seq->length() > 1000000);
-		$sumLength{'halfK'} += $seq->length() if ($seq->length() > 500);
-		$sumLength{'oneK'} += $seq->length() if ($seq->length() > 1000);
-		$sumLength{'tenK'} += $seq->length() if ($seq->length() > 10000);
-		$sumLength{'hundredK'} += $seq->length() if ($seq->length() > 100000);
-		$sumLength{'oneM'} += $seq->length() if ($seq->length() > 1000000);
+		push @allLengthList, $seq->length();
 	}
 }
-$sumLength{'halfK'} = &commify($sumLength{'halfK'});
-$sumLength{'oneK'} = &commify($sumLength{'oneK'});
-$sumLength{'tenK'} = &commify($sumLength{'tenK'});
-$sumLength{'hundredK'} = &commify($sumLength{'hundredK'});
-$sumLength{'oneM'} = &commify($sumLength{'oneM'});
 
-my $numberOfSequences = $#lengthList+1;
-my $meanSequenceLength = int $total/($#lengthList+1);
 open (OUTPUT,">$output") or die "can't open OUT-FILE: $!";
 print OUTPUT "--in $input$list--\n";
-print OUTPUT "Number of sequences: $numberOfSequences.\n";
-print OUTPUT "Total size of sequences: $total.\n";
-print OUTPUT "Longest sequence: $longest.\n";
-print OUTPUT "Shortest sequence: $shortest.\n";
-print OUTPUT "Number of sequences > 500 nt: $countByLength{'halfK'} ($sumLength{'halfK'} bp).\n";
-print OUTPUT "Number of sequences > 1k nt: $countByLength{'oneK'} ($sumLength{'oneK'} bp).\n";
-print OUTPUT "Number of sequences > 10k nt: $countByLength{'tenK'} ($sumLength{'tenK'} bp).\n";
-print OUTPUT "Number of sequences > 100k nt: $countByLength{'hundredK'} ($sumLength{'hundredK'} bp).\n";
-print OUTPUT "Number of sequences > 1M nt: $countByLength{'oneM'} ($sumLength{'oneM'} bp).\n";
-print OUTPUT "Mean sequence length: $meanSequenceLength.\n";
-@lengthList = sort {$b <=> $a} @lengthList;
-if($#lengthList % 2 == 1)
-{
-	my $median = int ($#lengthList/2);
-	my $medianLength = ($lengthList[$median]+$lengthList[$median+1])/2;
-	print OUTPUT "Median sequence length: $medianLength.\n";
-}
-else
-{
-	my $median = $#lengthList/2;
-	print OUTPUT "Median sequence length: $lengthList[$median].\n";
-}
-
-my $subtotal=0;
-my $lFifty=0;
-foreach (@lengthList)
-{
-	$subtotal += $_;
-	$lFifty++;
-	if($subtotal >= $total/2)
-	{
-		print OUTPUT "N50 sequence length: $_.\n";
-		print OUTPUT "L50 sequence count: $lFifty.\n";
-		last;
-	}
-}
+print OUTPUT &seqStats(@allLengthList); #all sequence stats
 close (OUTPUT);
+## subroutines 
+sub seqStats
+{
+	my @lengthList = @_;
+	my $stats = '';
+	my $total = 0;
+	my $longest = 0;
+	my $shortest = 9999999999;
+	my %countByLength = ('halfK'  => '0',
+		'oneK'    => '0',
+		'tenK'   => '0',
+		'hundredK'  => '0',
+		'oneM' => '0');
+	my %sumLength = ('halfK'  => '0',
+		'oneK'    => '0',
+		'tenK'   => '0',
+		'hundredK'  => '0',
+		'oneM' => '0');
+
+	foreach (@lengthList)
+	{
+		$total += $_;
+		$longest = $_ if ($longest < $_);
+		$shortest = $_ if ($shortest > $_);
+		$countByLength{'halfK'}++ if ($_ > 500);
+		$countByLength{'oneK'}++ if ($_ > 1000);
+		$countByLength{'tenK'}++ if ($_ > 10000);
+		$countByLength{'hundredK'}++ if ($_ > 100000);
+		$countByLength{'oneM'}++ if ($_ > 1000000);
+		$sumLength{'halfK'} += $_ if ($_ > 500);
+		$sumLength{'oneK'} += $_ if ($_ > 1000);
+		$sumLength{'tenK'} += $_ if ($_ > 10000);
+		$sumLength{'hundredK'} += $_ if ($_ > 100000);
+		$sumLength{'oneM'} += $_ if ($_ > 1000000);
+	}
+	my $numberOfSequences = $#lengthList+1;
+	my $meanSequenceLength = int $total/($#lengthList+1);
+	$sumLength{'halfK'} = &commify($sumLength{'halfK'});
+	$sumLength{'oneK'} = &commify($sumLength{'oneK'});
+	$sumLength{'tenK'} = &commify($sumLength{'tenK'});
+	$sumLength{'hundredK'} = &commify($sumLength{'hundredK'});
+	$sumLength{'oneM'} = &commify($sumLength{'oneM'});
+
+	$stats .= "Number of sequences: $numberOfSequences.\n";
+	$stats .= "Total size of sequences: $total.\n";
+	$stats .= "Longest sequence: $longest.\n";
+	$stats .= "Shortest sequence: $shortest.\n";
+	$stats .= "Number of sequences > 500 nt: $countByLength{'halfK'} ($sumLength{'halfK'} bp).\n";
+	$stats .= "Number of sequences > 1k nt: $countByLength{'oneK'} ($sumLength{'oneK'} bp).\n";
+	$stats .= "Number of sequences > 10k nt: $countByLength{'tenK'} ($sumLength{'tenK'} bp).\n";
+	$stats .= "Number of sequences > 100k nt: $countByLength{'hundredK'} ($sumLength{'hundredK'} bp).\n";
+	$stats .= "Number of sequences > 1M nt: $countByLength{'oneM'} ($sumLength{'oneM'} bp).\n";
+	$stats .= "Mean sequence length: $meanSequenceLength.\n";
+	@lengthList = sort {$b <=> $a} @lengthList;
+	if($#lengthList % 2 == 1)
+	{
+		my $median = int ($#lengthList/2);
+		my $medianLength = ($lengthList[$median]+$lengthList[$median+1])/2;
+		$stats .= "Median sequence length: $medianLength.\n";
+	}
+	else
+	{
+		my $median = $#lengthList/2;
+		$stats .= "Median sequence length: $lengthList[$median].\n";
+	}
+
+	my $subtotal=0;
+	my $lFifty=0;
+	foreach (@lengthList)
+	{
+		$subtotal += $_;
+		$lFifty++;
+		if($subtotal >= $total/2)
+		{
+			$stats .= "N50 sequence length:  $_.\n";
+			$stats .= "L50 sequence count: $lFifty.\n";
+			last;
+		}
+	}
+	return $stats;
+}
 
 sub commify {
 	local $_  = shift;

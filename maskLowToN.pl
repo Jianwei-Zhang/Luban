@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 #this script will change all acgt to N in sequence file.
 
 print "Please input Sequence File name:";

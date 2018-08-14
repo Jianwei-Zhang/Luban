@@ -12,11 +12,12 @@ until ($smrtcells =~ /\.list$/ && -e $smrtcells)
 	print "Please input a list of Smrtcells to be collected (.list):";
 	chop($smrtcells=<STDIN>);
 }
+my $archiveDir = '/data/archive';
 
 my $targetDir=$smrtcells;
 $targetDir =~ s/\.list$//;
-print "The target directory existed. It seems that you've dumped the data already. Check your archive directory now.\n" and exit if (-d "/data/archive/$targetDir"); # this is to avoid overwrite.
-`mkdir /data/archive/$targetDir`;
+print "The target directory existed. It seems that you've dumped the data already. Check your archive directory now.\n" and exit if (-d "$archiveDir/$targetDir"); # this is to avoid overwrite.
+`mkdir $archiveDir/$targetDir`;
 
 print "Do you want to delete the orginal files?(Yes/No):";
 chop(my $delete=<STDIN>);
@@ -36,12 +37,12 @@ while (<FILE>)
 	print "$number. $smrtcellLine[0]\n";
 	if($delete =~ /^YES$/i)
 	{
-		`mv $smrtcellLine[1] /data/archive/$targetDir/$smrtcellLine[0]`;
+		`mv $smrtcellLine[1] $archiveDir/$targetDir/$smrtcellLine[0]`;
 	}
 	else
 	{
-		`mkdir /data/archive/$targetDir/$smrtcellLine[0]`;
-		`rsync -r $smrtcellLine[1]/* /data/archive/$targetDir/$smrtcellLine[0]`;
+		`mkdir $archiveDir/$targetDir/$smrtcellLine[0]`;
+		`rsync -r $smrtcellLine[1]/* $archiveDir/$targetDir/$smrtcellLine[0]`;
 	}
 	$number++;
 }
